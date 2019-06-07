@@ -15,7 +15,6 @@ class Cannon(object):
     def manipulate_packet (self, ip_packet):
         # print "src = ", ip_packet.srcip
     	# print "dst = ", ip_packet.dstip
-        print ''
         # ! only care about HTTP (tcp)
         tcp = ip_packet.find('tcp')
         if not tcp:
@@ -39,23 +38,28 @@ class Cannon(object):
         # ! adjust ack and seq
         tcp.ack = (tcp.ack + self.connMap[req]['ack']) % 2**32
         tcp.seq = (tcp.seq + self.connMap[req]['seq']) %  2**32
-        print 'ack: ' + str(tcp.ack)
-        print 'seq: ' + str(tcp.seq)
+        # print 'ack: ' + str(tcp.ack)
+        # print 'seq: ' + str(tcp.seq)
         
         
         # ! case 1: is request
-        # todo what if the client request is out of order
         if bool(re.match('^GET\s+.+', tcpContent)):
             # * get domain and url path
             domain = tcpContent[tcpContent.find("Host: ")+6 : tcpContent.find("\r\n", tcpContent.find("Host: "))]
             url = tcpContent[tcpContent.find("GET ")+4 : tcpContent.find("HTTP", tcpContent.find("GET "))-1]
-            
+            print "domain: " + domain + "  length: " + str(len(domain))
+            print "url: " + url + "  length: " + str(len(url))
+
+
+
             domainMatch = bool(self.target_domain_re.search(domain))
             pathMatch = bool(self.url_path_re.search(url))
             
             # todo remove comment
-            # if not (domainMatch & pathMatch):
-            #     return ip_packet
+            if not (domainMatch & pathMatch):
+                return ip_packet
+            self.connMap[res]['target'] = True
+            self.connMap[req]['target'] = True
             
             # * if Accept-Encoding is already there
             if "Accept-Encoding: " in tcpContent:
@@ -69,12 +73,10 @@ class Cannon(object):
                 offset = 8 - (end - start) # * length of "identity" = 8
                 self.connMap[res]['ack'] += 0 - offset
                 self.connMap[req]['seq'] += offset
-                self.connMap[res]['target'] = True
-                self.connMap[req]['target'] = True
-                print 'ack offset: ' + str(self.connMap[res]['ack'])
-                print 'seq offset: ' + str(self.connMap[req]['seq'])
-                print 'ack: ' + str(tcp.ack)
-                print 'seq: ' + str(tcp.seq)
+                # print 'ack offset: ' + str(self.connMap[res]['ack'])
+                # print 'seq offset: ' + str(self.connMap[req]['seq'])
+                # print 'ack: ' + str(tcp.ack)
+                # print 'seq: ' + str(tcp.seq)
                 return ip_packet
             # else:
             #     noCompress = "Accept-Encoding: identity"
@@ -82,13 +84,12 @@ class Cannon(object):
             #     headers.insert(len(headers)/2, noCompress)
             #     tcpContent = '\r\n'.join(headers)
             #     tcp.payload = tcpContent
-                
-                  
+                                
         # ! case 2: if the packet is from the server and the site is a target
         # ! the current request is always represented by the req tuple 
         if (self.connMap[req]['role'] == 'server') & self.connMap[req]['target']:
             # * do not modify unless content-type is text/html and replace content-length if exists
-            if ("Content-Length: " in tcpContent) & ("Content-Type: text/html" in tcpContent):
+            if ("Content-Length: " in tcpContent):
                 start = tcpContent.find("Content-Length: ") + len("Content-Length: ")
                 end = tcpContent.find("\r\n", start)
                 print "length: " + tcpContent[start:end]
