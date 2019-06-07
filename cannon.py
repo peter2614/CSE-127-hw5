@@ -86,9 +86,9 @@ class Cannon(object):
                   
         # ! case 2: if the packet is from the server and the site is a target
         # ! the current request is always represented by the req tuple 
-        if (self.connMap[req]['role'] == 'server') & self.connMap[req]['target']:    
-            # * replace content-length if exists
-            if "Content-Length: " in tcpContent:
+        if (self.connMap[req]['role'] == 'server') & self.connMap[req]['target']:
+            # * do not modify unless content-type is text/html and replace content-length if exists
+            if ("Content-Length: " in tcpContent) & ("Content-Type: text/html" in tcpContent):
                 start = tcpContent.find("Content-Length: ") + len("Content-Length: ")
                 end = tcpContent.find("\r\n", start)
                 print "length: " + tcpContent[start:end]
